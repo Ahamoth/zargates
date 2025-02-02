@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html data-capo="">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ZarGates Retrodrop</title>
+    <style>
+        .tftable {
+            font-size: 16px;
+            color: #333333;
+            width: 100%;
+            border-width: 1px;
+            border-color: #87ceeb;
+            border-collapse: collapse;
+        }
+        .tftable th {
+            font-size: 18px;
+            background-color: #87ceeb;
+            border-width: 1px;
+            padding: 8px;
+            border-style: solid;
+            border-color: #87ceeb;
+            text-align: left;
+            font-weight: bold; /* Полужирный текст для заголовков */
+        }
+        .tftable td {
+            font-size: 16px;
+            border-width: 1px;
+            padding: 8px;
+            border-style: solid;
+            border-color: #87ceeb;
+            cursor: pointer;
+            font-weight: bold; /* Полужирный текст для ячеек */
+        }
+        .gold { background-color: yellow; }
+        .diamond { background-color: blue; color: white; }
+        .common { background-color: #8a8a8a; color: white;}
+        .legendary { background-color: #f2a40c; color: white;}
+        .epic { background-color: #b75cff; color: white;}
+        .rare { background-color: #007fda; color: white;}
+        .mythic { background-color: #ff57da; color: white;}
+        .unique { background-color: #fd3c3c; color: white;}
+        .tftable tr:hover {background-color: #e0ffff; color: black; }
+        #result-message {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #87ceeb;
+            background-color: #e0ffff;
+            display: none;
+        }
+        #token-input {
+            margin-bottom: 20px;
+            padding: 10px;
+            width: 300px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- <h1>Таблица данных</h1> -->
+    <input type="text" id="token-input" placeholder="Введите ваш Bearer токен">
+    <button onclick="fetchDataAndRenderTable()">Загрузить</button>
+    <div id="table-container">
+        <p id="loading-message">Загрузка данных...</p>
+    </div>
+    <div id="result-message"></div>
+    <script>
+        const translations = {
+            "MAGIC_DUST": "Волшебная пыльца",
+            "SHARE_MARKETPLACE": "Shares Grand Bazaar",
+            "SHARE_STORE": "Shares ZarMart",
+            "SHARE_EXCHANGER": "Shares ZarBit",
+            "SHARE_BANK": "Shares банка",
+            "GOLD_TICKET_SEASON_1": "Золотой билет Сезон 1",
+            "GOLD_TICKET_SEASON_2": "Золотой билет Сезон 2",
+            "GOLD_TICKET_SEASON_3": "Золотой билет Сезон 3",
+            "GOLD_TICKET_SEASON_4": "Золотой билет Сезон 4",
+            "GOLD_TICKET_SEASON_5": " Золотой билет Сезон 5",
+            "DIAMOND_TICKET_SEASON_1": "Бриллиантовый билет Сезон 1",
+            "DIAMOND_TICKET_SEASON_2": "Бриллиантовый билет Сезон 2",
+            "DIAMOND_TICKET_SEASON_3": "Бриллиантовый билет Сезон 3",
+            "DIAMOND_TICKET_SEASON_4": "Бриллиантовый билет Сезон 4",
+            "DIAMOND_TICKET_SEASON_5": "Бриллиантовый билет Сезон 5",
+            "COMMON_CHEST": "Сундук удачи Обычный",
+            "EPIC_CHEST": "Сундук удачи Эпический",
+            "LEGENDARY_CHEST": "Сундук удачи Легендарный",
+            "SECRET_BOX": "Секретный ящик",
+            "GOLD_ARTEFACT_BOX": "Золотой Кейс с артефактами",
+            "DIAMOND_ARTEFACT_BOX": "Алмазный Кейс с артефактами",
+            "GAMING_NFT": " Игровой НФТ",
+            "COMMON_CLEOPATRA": "Клео Обычный",
+            "EPIC_CLEOPATRA": "Клео Эпический",
+            "RARE_CLEOPATRA": "Клео Редкий",
+            "LEGENDARY_CLEOPATRA": "Клео Легендарный",
+            "MYTHIC_CLEOPATRA": "Клео Мифический",
+            "UNIQUE_CLEOPATRA": "Клео Уникальный",
+            "COMMON_ALCHEMIST": "Алхимик Обычный",
+            "EPIC_ALCHEMIST": "Алхимик Эпический",
+            "RARE_ALCHEMIST": "Алхимик Редкий",
+            "LEGENDARY_ALCHEMIST": "Алхимик Легендарный",
+            "MYTHIC_ALCHEMIST": "Алхимик Мифический",
+            "UNIQUE_ALCHEMIST": "Алхимик Уникальный",
+            "COMMON_CLOVER": "Драгоценный клевер Обычный",
+            "EPIC_CLOVER": "Драгоценный клевер Эпический",
+            "LEGENDARY_CLOVER": " Драгоценный клевер Легендарный",
+            "COMMON_PICKAXE": "Кирка-топор Обычный",
+            "EPIC_PICKAXE": "Кирка-топор Эпический",
+            "LEGENDARY_PICKAXE": "Кирка-топор Легендарный",
+            "COMMON_SHIELD": "Щит Обычный",
+            "EPIC_SHIELD": "Щит Эпический",
+            "LEGENDARY_SHIELD": "Щит Легендарный",
+            "COMMON_HAMMER": "Молот Обычный",
+            "EPIC_HAMMER": "Молот Эпический",
+            "LEGENDARY_HAMMER": "Молот Легендарный",
+            "COMMON_VELOCITY_BOOTS": "Скоростные ботинки Обычный",
+            "EPIC_VELOCITY_BOOTS": "Скоростные ботинки Эпический",
+            "LEGENDARY_VELOCITY_BOOTS": "Скоростные ботинки  Легендарный",
+            "COMMON_CLAIM_BOT": "Робот Клейм Обычный",
+            "EPIC_CLAIM_BOT": "Робот Клейм Эпический",
+            "LEGENDARY_CLAIM_BOT": "Робот Клейм Легендарный",
+            "COMMON_PIGGY_BANK": "Свинья-Копилка Обычный",
+            "EPIC_PIGGY_BANK": "Свинья-Копилка Эпический",
+            "LEGENDARY_PIGGY_BANK": "Свинья-Копилка Легендарный",
+            "COMMON_PIXIE": "Пикси Обычный",
+            "EPIC_PIXIE": "Пикси Эпический",
+            "LEGENDARY_PIXIE": "Пикси Легендарный",
+            "COMMON_INKWELL": "Чернильница Обычный",
+            "EPIC_INKWELL": "Чернильница Эпический",
+            "LEGENDARY_INKWELL": "Чернильница Легендарный",
+            "COMMON_LEPRECHAUN_COIN": "Монета Лепрекона Обычный",
+            "EPIC_LEPRECHAUN_COIN": "Монета Лепрекона Эпический",
+            "LEGENDARY_LEPRECHAUN_COIN": "Монета Лепрекона Легендарный",
+            "COMMON_BATTLE_MASK": "Боевая Маска Обычный",
+            "EPIC_BATTLE_MASK": "Боевая Маска Эпический",
+            "LEGENDARY_BATTLE_MASK": "Боевая Маска Легендарный",
+            "COMMON_PINKY": "Пинки Обычный",
+            "EPIC_PINKY": "Пинки Эпический",
+            "LEGENDARY_PINKY": "Пинки Легендарный",
+            "COMMON_KNIGHT_AVATAR": "Аватар рыцаря Обычный",
+            "EPIC_KNIGHT_AVATAR": "Аватар рыцаря Эпический",
+            "LEGENDARY_KNIGHT_AVATAR": "Аватар рыцаря Легендарный",
+            "COMMON_DR_DUNCAN": "Доктор Дункан Обычный",
+            "EPIC_DR_DUNCAN": "Доктор Дункан Эпический",
+            "LEGENDARY_DR_DUNCAN": "Доктор Дункан Легендарный"
+        };
+
+        function getClassForItem(name) {
+            if (name.includes("Золотой")) return "gold";
+            if (name.includes("Бриллиантовый")) return "diamond";
+            if (name.includes("Обычный")) return "common";
+            if (name.includes("Легендарный")) return "legendary";
+            if (name.includes("Эпический")) return "epic";
+            if (name.includes("Редкий")) return "rare";
+            if (name.includes("Мифический")) return "mythic";
+            if (name.includes("Уникальный")) return "unique";
+            return "";
+        }
+
+        async function fetchDataAndRenderTable() {
+            const url = 'https://api-rd.zargates.com/api/v1/offer-manager/tradeable-types?filter=MARKETPLACE';
+            const loadingMessage = document.getElementById('loading-message');
+            const bearerToken = document.getElementById('token-input').value.trim();
+            if (!bearerToken) {
+                loadingMessage.textContent = 'Ошибка: Введите Bearer токен';
+                loadingMessage.style.color = 'red';
+                return;
+            }
+            try {
+                const response = await fetch(url, { headers: { 'Authorization': `Bearer ${bearerToken}` } });
+                if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+                const data = await response.json();
+                if (!data.data || !Array.isArray(data.data)) throw new Error("Некорректный формат данных");
+                
+                const orderedKeys = Object.keys(translations);
+                const translatedData = orderedKeys.map(key => {
+                    const item = data.data.find(d => d.name === key);
+                    return item ? { id: item.id, name: translations[key] || key, min_price: item.min_price } : null;
+                }).filter(item => item !== null);
+                
+                let tableHtml = `<table class="tftable" border="1">`;
+                tableHtml += `<tr><th>Артифакт</th><th>Цена</th></tr>`;
+                translatedData.forEach(item => {
+                    const rowClass = getClassForItem(item.name);
+                    tableHtml += `<tr class="${rowClass}"><td>${item.name}</td><td>${item.min_price}</td></tr>`;
+                });
+                tableHtml += `</table>`;
+                document.getElementById('table-container').innerHTML = tableHtml;
+                localStorage.setItem('bearerToken', bearerToken); // Сохраняем токен в localStorage
+            } catch (error) {
+                console.error("Ошибка при загрузке данных:", error);
+                loadingMessage.textContent = `Ошибка: ${error.message}`;
+                loadingMessage.style.color = 'red';
+            }
+        }
+
+        // При загрузке страницы проверяем, есть ли сохраненный токен
+        window.onload = function() {
+            const savedToken = localStorage.getItem('bearerToken');
+            if (savedToken) {
+                document.getElementById('token-input').value = savedToken;
+                fetchDataAndRenderTable(); // Автоматически загружаем данные, если токен есть
+            }
+        };
+    </script>
+</body>
+</html>
