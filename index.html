@@ -89,14 +89,14 @@
             "DIAMOND_ARTEFACT_BOX": "Алмазный Кейс с артефактами",
             "GAMING_NFT": " Игровой НФТ",
             "COMMON_CLEOPATRA": "Клео Обычный",
-            "EPIC_CLEOPATRA": "Клео Эпический",
             "RARE_CLEOPATRA": "Клео Редкий",
+			"EPIC_CLEOPATRA": "Клео Эпический",
             "LEGENDARY_CLEOPATRA": "Клео Легендарный",
             "MYTHIC_CLEOPATRA": "Клео Мифический",
             "UNIQUE_CLEOPATRA": "Клео Уникальный",
             "COMMON_ALCHEMIST": "Алхимик Обычный",
-            "EPIC_ALCHEMIST": "Алхимик Эпический",
-            "RARE_ALCHEMIST": "Алхимик Редкий",
+			"RARE_ALCHEMIST": "Алхимик Редкий",
+            "EPIC_ALCHEMIST": "Алхимик Эпический",            
             "LEGENDARY_ALCHEMIST": "Алхимик Легендарный",
             "MYTHIC_ALCHEMIST": "Алхимик Мифический",
             "UNIQUE_ALCHEMIST": "Алхимик Уникальный",
@@ -156,42 +156,83 @@
             return "";
         }
 
-        async function fetchDataAndRenderTable() {
-            const url = 'https://api-rd.zargates.com/api/v1/offer-manager/tradeable-types?filter=MARKETPLACE';
-            const loadingMessage = document.getElementById('loading-message');
-            const bearerToken = document.getElementById('token-input').value.trim();
-            if (!bearerToken) {
-                loadingMessage.textContent = 'Ошибка: Введите Bearer токен';
-                loadingMessage.style.color = 'red';
-                return;
-            }
-            try {
-                const response = await fetch(url, { headers: { 'Authorization': `Bearer ${bearerToken}` } });
-                if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
-                const data = await response.json();
-                if (!data.data || !Array.isArray(data.data)) throw new Error("Некорректный формат данных");
-                
-                const orderedKeys = Object.keys(translations);
-                const translatedData = orderedKeys.map(key => {
-                    const item = data.data.find(d => d.name === key);
-                    return item ? { id: item.id, name: translations[key] || key, min_price: item.min_price } : null;
-                }).filter(item => item !== null);
-                
-                let tableHtml = `<table class="tftable" border="1">`;
-                tableHtml += `<tr><th>Артифакт</th><th>Цена</th></tr>`;
-                translatedData.forEach(item => {
-                    const rowClass = getClassForItem(item.name);
-                    tableHtml += `<tr class="${rowClass}"><td>${item.name}</td><td>${item.min_price}</td></tr>`;
-                });
-                tableHtml += `</table>`;
-                document.getElementById('table-container').innerHTML = tableHtml;
-                localStorage.setItem('bearerToken', bearerToken); // Сохраняем токен в localStorage
-            } catch (error) {
-                console.error("Ошибка при загрузке данных:", error);
-                loadingMessage.textContent = `Ошибка: ${error.message}`;
-                loadingMessage.style.color = 'red';
-            }
-        }
+   async function fetchDataAndRenderTable() {
+    const url = 'https://api-rd.zargates.com/api/v1/offer-manager/tradeable-types?filter=MARKETPLACE';
+    const loadingMessage = document.getElementById('loading-message');
+    const bearerToken = document.getElementById('token-input').value.trim();
+    if (!bearerToken) {
+        loadingMessage.textContent = 'Ошибка: Введите Bearer токен';
+        loadingMessage.style.color = 'red';
+        return;
+    }
+    try {
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${bearerToken}` } });
+        if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+        const data = await response.json();
+        if (!data.data || !Array.isArray(data.data)) throw new Error("Некорректный формат данных");
+
+        const orderedKeys = Object.keys(translations);
+        const translatedData = orderedKeys.map(key => {
+            const item = data.data.find(d => d.name === key);
+            return item ? { id: item.id, name: translations[key] || key, min_price: item.min_price } : null;
+        }).filter(item => item !== null);
+
+        let tableHtml = `<table class="tftable" border="1">`;
+        tableHtml += `<tr><th>Артифакт</th><th>Цена</th></tr>`;
+        translatedData.forEach(item => {
+            const rowClass = getClassForItem(item.name);
+            tableHtml += `<tr class="${rowClass}" data-id="${item.id}" data-price="${item.min_price}">
+                            <td>${item.name}</td>
+                            <td>${item.min_price}</td>
+                          </tr>`;
+        });
+        tableHtml += `</table>`;
+        document.getElementById('table-container').innerHTML = tableHtml;
+
+        // Добавляем обработчик клика на строки таблицы
+        const rows = document.querySelectorAll('.tftable tr');
+        rows.forEach(row => {
+            row.addEventListener('click', async () => {
+                const itemId = row.getAttribute('data-id');
+                const itemPrice = row.getAttribute('data-price');
+
+                if (!itemId || !itemPrice) return;
+
+                const postData = {
+                    price: parseFloat(itemPrice),
+                    quantity: 1,
+                    tradeable_item_type_id: itemId
+                };
+
+                try {
+                    const response = await fetch('https://api-rd.zargates.com/api/v1/offer-manager/deal', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${bearerToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(postData)
+                    });
+
+                    if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+
+                    const result = await response.json();
+                    console.log('Успешно:', result);
+                    alert('Сделка успешно создана!');
+                } catch (error) {
+                    console.error('Ошибка при отправке запроса:', error);
+                    alert('Ошибка при создании сделки: ' + error.message);
+                }
+            });
+        });
+
+        localStorage.setItem('bearerToken', bearerToken); // Сохраняем токен в localStorage
+    } catch (error) {
+        console.error("Ошибка при загрузке данных:", error);
+        loadingMessage.textContent = `Ошибка: ${error.message}`;
+        loadingMessage.style.color = 'red';
+    }
+}
 
         // При загрузке страницы проверяем, есть ли сохраненный токен
         window.onload = function() {
